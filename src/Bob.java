@@ -1,3 +1,5 @@
+import java.net.Socket;
+
 /**
  * Bob.java
  * Created By: Andrew Toomey
@@ -25,8 +27,33 @@
  * SOFTWARE.
  */
 public class Bob extends Actor {
+
+    public Bob(String name, Socket socket, String key, int port) {
+        super(name, socket, key, port);
+    }
+
     @Override
     public void run() {
+
+    }
+
+    @Override
+    protected void connect() {
+
+    }
+
+    @Override
+    protected void disconnect() {
+
+    }
+
+    @Override
+    protected void send(String message) {
+
+    }
+
+    @Override
+    protected void receive() {
 
     }
 }

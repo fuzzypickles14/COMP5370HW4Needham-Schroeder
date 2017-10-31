@@ -27,16 +27,23 @@ import java.net.Socket;
  * SOFTWARE.
  */
 public abstract class Actor implements Runnable {
+    protected static final String LOCAL_HOST = "127.0.0.1";
     private String myKey;
     private String name;
     private int port;
-    protected Socket socket;
+    private Socket socket;
 
     protected abstract void connect();
     protected abstract void disconnect();
     protected abstract void send(String message);
     protected abstract void receive();
 
+    public Actor(String name, Socket socket, String key, int port) {
+        this.name = name;
+        this.socket = socket;
+        this.myKey = key;
+        this.port = port;
+    }
 
 
 
@@ -70,6 +77,14 @@ public abstract class Actor implements Runnable {
 
     public void setPort(int port) {
         this.port = port;
+    }
+
+    public void setSocket(Socket socket) {
+        this.socket = socket;
+    }
+
+    public Socket getSocket() {
+        return this.socket;
     }
 
     //endregion
