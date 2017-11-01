@@ -1,3 +1,4 @@
+import java.net.ServerSocket;
 import java.net.Socket;
 
 /**
@@ -27,18 +28,18 @@ import java.net.Socket;
  * SOFTWARE.
  */
 public abstract class Actor implements Runnable {
-    protected static final String LOCAL_HOST = "127.0.0.1";
+    protected static final String LOCAL_HOST = "localhost";
     private String myKey;
     private String name;
     private int port;
-    private Socket socket;
+    private ServerSocket socket;
 
     protected abstract void connect();
     protected abstract void disconnect();
     protected abstract void send(String message);
     protected abstract void receive();
 
-    public Actor(String name, Socket socket, String key, int port) {
+    public Actor(String name, ServerSocket socket, String key, int port) {
         this.name = name;
         this.socket = socket;
         this.myKey = key;
@@ -48,7 +49,11 @@ public abstract class Actor implements Runnable {
 
 
     protected boolean isConnected() {
-        return socket.isConnected() && !socket.isClosed();
+        return !socket.isBound() && !socket.isClosed();
+    }
+
+    protected void printLine(String message) {
+        System.out.println(String.format("%s %s", getName(), message));
     }
 
 
@@ -79,11 +84,11 @@ public abstract class Actor implements Runnable {
         this.port = port;
     }
 
-    public void setSocket(Socket socket) {
+    public void setSocket(ServerSocket socket) {
         this.socket = socket;
     }
 
-    public Socket getSocket() {
+    public ServerSocket getSocket() {
         return this.socket;
     }
 

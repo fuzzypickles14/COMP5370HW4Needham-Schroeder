@@ -1,3 +1,5 @@
+import java.io.*;
+import java.net.ServerSocket;
 import java.net.Socket;
 
 /**
@@ -27,12 +29,24 @@ import java.net.Socket;
  * SOFTWARE.
  */
 public class Alice extends Actor {
-    public Alice(String name, Socket socket, String key, int port) {
+    public Alice(String name, ServerSocket socket, String key, int port) {
         super(name, socket, key, port);
     }
 
     @Override
     public void run() {
+        printLine("Started Thread");
+        try {
+            Socket connected = getSocket().accept();
+            BufferedReader receiverMessage = new BufferedReader(new InputStreamReader(connected.getInputStream()));
+            DataOutputStream sender = new DataOutputStream(connected.getOutputStream());
+            String message = receiverMessage.readLine();
+            printLine(String.format("Received: %s", message));
+            sender.writeBytes(String.format("%s %s", message, "has been edited\n"));
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override

@@ -1,17 +1,35 @@
 import java.io.IOException;
+import java.net.ServerSocket;
 import java.net.Socket;
 
 public class Main {
 
     public static void main(String[] args) {
         //init threads
-        int alicePort = 50001;
-        int bobPort = 50002;
-        int caPort = 50003;
+        int alicePort = 51501;
+        int bobPort = 57621;
+        int caPort = 51794;
         try {
-            Alice alice = new Alice("Alice", new Socket("Alice", alicePort), "asdf", alicePort);
-            Bob bob = new Bob("Bob", new Socket("Bob", bobPort), "asdf", bobPort);
-            CentralAuthority centralAuthority = new CentralAuthority("CentralAuthority", new Socket("CentralAuthority", caPort), "asdf", caPort);
+            Alice alice = new Alice("Alice", new ServerSocket(alicePort), "asdf", alicePort);
+            Bob bob = new Bob("Bob", new ServerSocket(bobPort), "asdf", bobPort);
+            CentralAuthority centralAuthority = new CentralAuthority("CentralAuthority", new ServerSocket(caPort), "asdf", caPort);
+
+            Thread aliceThread = new Thread(alice);
+            Thread bobThread = new Thread(bob);
+            Thread caThread = new Thread(centralAuthority);
+
+            aliceThread.start();
+            bobThread.start();
+            caThread.start();
+
+
+
+
+
+
+
+
+
         //connect threads
 
         //alice send to cathy Alice || Bob || r1
@@ -23,16 +41,6 @@ public class Main {
         // bob to alice { r2 } ks
 
         //alice to bob { r2 - 1 } ks
-
-
-
-
-
-
-
-
-
-
 
         } catch (IOException e) {
             e.printStackTrace();

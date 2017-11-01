@@ -1,3 +1,8 @@
+import java.io.BufferedReader;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.ServerSocket;
 import java.net.Socket;
 
 /**
@@ -28,13 +33,26 @@ import java.net.Socket;
  */
 public class Bob extends Actor {
 
-    public Bob(String name, Socket socket, String key, int port) {
+    public Bob(String name, ServerSocket socket, String key, int port) {
         super(name, socket, key, port);
     }
 
     @Override
     public void run() {
+        printLine("Started Thread");
+        Socket sendTo = null;
+        try {
+            sendTo = new Socket("localhost", 51501);
+            DataOutputStream sendToServer = new DataOutputStream(sendTo.getOutputStream());
+            BufferedReader inFromServer = new BufferedReader(new InputStreamReader(sendTo.getInputStream()));
+            String message = "This is a test\n";
+            sendToServer.writeBytes(message);
+            String newMessage = inFromServer.readLine();
+            printLine("Received: " + newMessage);
 
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override

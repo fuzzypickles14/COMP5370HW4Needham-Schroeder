@@ -1,3 +1,4 @@
+import java.net.ServerSocket;
 import java.net.Socket;
 
 /**
@@ -27,13 +28,13 @@ import java.net.Socket;
  * SOFTWARE.
  */
 public class CentralAuthority extends Actor {
-    public CentralAuthority(String name, Socket socket, String key, int port) {
+    public CentralAuthority(String name, ServerSocket socket, String key, int port) {
         super(name, socket, key, port);
     }
 
     @Override
     public void run() {
-
+        printLine("Started Thread");
     }
 
     @Override
