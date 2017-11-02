@@ -1,10 +1,19 @@
 import sun.misc.BASE64Decoder;
+import sun.misc.BASE64Encoder;
 
 import javax.crypto.*;
+import javax.crypto.spec.SecretKeySpec;
+import java.io.BufferedReader;
+import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.ServerSocket;
+import java.net.Socket;
 import java.security.InvalidKeyException;
+import java.security.Key;
 import java.security.NoSuchAlgorithmException;
+import java.util.Base64;
+import java.util.Objects;
 
 /**
  * Actor.java
@@ -39,9 +48,7 @@ public abstract class Actor implements Runnable {
     private String name;
     private int port;
     private ServerSocket socket;
-
-    protected abstract void send(String message);
-    protected abstract void receive();
+    protected Key sessionKey;
 
     public Actor(String name, ServerSocket socket, SecretKey key, int port) {
         this.name = name;
@@ -51,12 +58,63 @@ public abstract class Actor implements Runnable {
     }
 
 
-
-    protected boolean isConnected() {
-        return !socket.isBound() && !socket.isClosed();
+    protected void send(String message, Socket socket) {
+        try {
+            DataOutputStream sendToServer = new DataOutputStream(socket.getOutputStream());
+            printLine(String.format("Sending %s", message));
+            sendToServer.writeBytes(message);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
-    protected void printLine(String message) {
+    protected void sendWithEncryption(String message, Key key, Socket socket) {
+        try {
+            DataOutputStream sendToServer = new DataOutputStream(socket.getOutputStream());
+            printLine(String.format("Sending %s", message));
+            sendToServer.writeBytes(encryptMessage(message, key) + "\r");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+
+    protected String receive(Socket socket) {
+        String retVal = "";
+        try {
+            BufferedReader inFromServer = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            retVal = inFromServer.readLine();
+            if (Objects.equals(retVal, "")) {
+                retVal = inFromServer.readLine();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        printLine(String.format("Received %s", retVal));
+        return retVal;
+    }
+
+    protected String receiveWithDecryption(Socket socket, Key key) {
+        String message = receive(socket);
+        return decryptMessage(message, key);
+    }
+
+    protected String receiveAll(Socket socket) {
+        StringBuilder retVal = new StringBuilder();
+        try {
+            BufferedReader inFromServer = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            do {
+                retVal.append(inFromServer.readLine());
+            }
+            while (!retVal.toString().contains("{[END]}") || inFromServer.ready());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        printLine(String.format("Received %s", retVal));
+        return retVal.toString().replace("{[END]}", "");
+
+    }
+    protected synchronized void printLine(String message) {
         System.out.println(String.format("%s %s", getName(), message));
     }
 
@@ -69,18 +127,53 @@ public abstract class Actor implements Runnable {
     }
 
     protected String decryptMessage(String message) {
+        String retVal = "";
         try {
             Cipher cipher = Cipher.getInstance("AES");
             cipher.init(Cipher.DECRYPT_MODE, getMyKey());
             byte[] decryptedMessage = cipher.doFinal(new BASE64Decoder().decodeBuffer(message));
-            String decryptedString = new String(decryptedMessage);
-            return decryptedString;
+            retVal = new String(decryptedMessage);
+            printLine(String.format("Decrypted message: %s", retVal));
         } catch (NoSuchAlgorithmException | IllegalBlockSizeException | BadPaddingException | InvalidKeyException | NoSuchPaddingException | IOException e) {
             e.printStackTrace();
         }
-        return "";
+        return retVal;
     }
 
+    protected String decryptMessage(String message, Key key) {
+        String retVal = "";
+        try {
+            Cipher cipher = Cipher.getInstance("AES");
+            cipher.init(Cipher.DECRYPT_MODE, key);
+            byte[] decryptedMessage = cipher.doFinal(new BASE64Decoder().decodeBuffer(message));
+            retVal = new String(decryptedMessage);
+            printLine(String.format("Decrypted message: %s", retVal));
+        } catch (NoSuchAlgorithmException | IllegalBlockSizeException | BadPaddingException | InvalidKeyException | NoSuchPaddingException | IOException e) {
+            e.printStackTrace();
+        }
+        return retVal;
+    }
+
+    protected String encryptMessage(String message, Key key) {
+        Cipher cipher = null;
+        String retVal = "";
+        try {
+            cipher = Cipher.getInstance("AES");
+            cipher.init(Cipher.ENCRYPT_MODE, key);
+            byte[] encryptedMessage = cipher.doFinal(message.getBytes());
+            retVal =  new BASE64Encoder().encode(encryptedMessage);
+            printLine(String.format("Encrypted message: %s", retVal));
+        } catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException | BadPaddingException | IllegalBlockSizeException e) {
+            e.printStackTrace();
+        }
+        return retVal;
+    }
+
+
+    protected Key buildSessionKey(String key) {
+        byte[] decodedKey = Base64.getDecoder().decode(key);
+        return new SecretKeySpec(decodedKey, 0, decodedKey.length, "AES");
+    }
 
 
     //region Getters and Setters

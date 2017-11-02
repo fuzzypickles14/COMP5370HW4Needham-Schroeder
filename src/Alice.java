@@ -1,12 +1,7 @@
-import sun.misc.BASE64Decoder;
-
 import javax.crypto.*;
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
-import java.util.Objects;
 import java.util.Random;
 
 /**
@@ -45,60 +40,43 @@ public class Alice extends Actor {
         printLine("Started Thread");
         Socket sendTo;
         try {
-            sendTo = new Socket("localhost", Main.CA_PORT);
-            DataOutputStream sendToServer = new DataOutputStream(sendTo.getOutputStream());
-            BufferedReader inFromServer = new BufferedReader(new InputStreamReader(sendTo.getInputStream()));
+            sendTo = new Socket(LOCAL_HOST, Main.CA_PORT);
             Random random = new Random();
 
             String message = buildMessageToSend("Alice", "Bob", String.valueOf(random.nextInt()));
-            printLine("Sending " + message);
-            sendToServer.writeBytes(message);
-            StringBuilder newMessage = new StringBuilder();
 
-            do {
-                newMessage.append(inFromServer.readLine() + "\n");
-            }
-            while (inFromServer.ready());
+            send(message, sendTo);
 
-            printLine("Received: " + newMessage);
+            String receivedMessage = receiveAll(sendTo);
 
-            Cipher cipher = Cipher.getInstance("AES");
-            cipher.init(Cipher.DECRYPT_MODE, getMyKey());
-            byte[] decryptedMessage = cipher.doFinal(new BASE64Decoder().decodeBuffer(newMessage.toString()));
-            String decryptedString = new String(decryptedMessage);
-            printLine("Decrypted message: " + decryptedString);
+
+            String decryptedString = decryptMessage(receivedMessage);
 
             sendTo.close();
             String[] decryptedFields = decryptedString.split(Actor.MESSAGE_DELIMITER);
 
+            sessionKey = buildSessionKey(decryptedFields[3]);
 
 
+            sendTo = new Socket(LOCAL_HOST, Main.BOB_PORT);
 
-            sendTo = new Socket("localhost", Main.BOB_PORT);
-
-            sendToServer = new DataOutputStream(sendTo.getOutputStream());
-            inFromServer = new BufferedReader(new InputStreamReader(sendTo.getInputStream()));
-
-            printLine("Sending " + decryptedFields[4]);
-            sendToServer.writeBytes(decryptedFields[4] + '\n');
+            send(decryptedFields[4] + '\r', sendTo);
+            String encryptedNonce = receive(sendTo);
 
 
+            String nonce = decryptMessage(encryptedNonce, sessionKey);
 
+            String newNonce = String.valueOf(Integer.parseInt(nonce) - 1);
 
-        } catch (IOException | NoSuchAlgorithmException | NoSuchPaddingException | BadPaddingException | IllegalBlockSizeException | InvalidKeyException e) {
+            send(encryptMessage(newNonce,  sessionKey) + "\r", sendTo);
+
+            for (int i = 1; i < 4; i ++) {
+                sendWithEncryption(String.format("This is message %d to Bob.", i), sessionKey, sendTo);
+                receiveWithDecryption(sendTo, sessionKey);
+            }
+            sendTo.close();
+        } catch (IOException e) {
             e.printStackTrace();
         }
     }
-
-    @Override
-    protected void send(String message) {
-
-    }
-
-    @Override
-    protected void receive() {
-
-    }
-
-
 }

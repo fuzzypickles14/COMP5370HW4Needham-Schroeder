@@ -36,26 +36,6 @@ public class Main {
             bobThread.start();
             caThread.start();
 
-
-
-
-
-
-
-
-
-        //connect threads
-
-        //alice send to cathy Alice || Bob || r1
-
-        // cathy send to alice { Alice || Bob || r1 || ks || { Alice || ks } kBC } kAC
-
-        // alice to bob { Alice || ks } kBC
-
-        // bob to alice { r2 } ks
-
-        //alice to bob { r2 - 1 } ks
-
         } catch (IOException | NoSuchAlgorithmException e) {
             e.printStackTrace();
         }

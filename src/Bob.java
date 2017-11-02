@@ -1,15 +1,7 @@
-import sun.misc.BASE64Decoder;
-
 import javax.crypto.*;
-import java.io.BufferedReader;
-import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.net.UnknownHostException;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
 import java.util.Random;
 
 /**
@@ -50,35 +42,32 @@ public class Bob extends Actor {
         Socket sendTo;
         try {
             sendTo = getSocket().accept();
-            DataOutputStream sendToServer = new DataOutputStream(sendTo.getOutputStream());
-            BufferedReader inFromServer = new BufferedReader(new InputStreamReader(sendTo.getInputStream()));
             Random random = new Random();
 
-            StringBuilder newMessage = new StringBuilder();
-            do {
-                newMessage.append(inFromServer.readLine() + "\n");
+            String newMessage = receive(sendTo);
+
+
+            String decryptedString = decryptMessage(newMessage);
+
+            String[] decryptedFields = decryptedString.split(Actor.MESSAGE_DELIMITER);
+            sessionKey = buildSessionKey(decryptedFields[1]);
+
+            String nonce = String.valueOf(random.nextInt());
+
+            String encryptedNonce = encryptMessage(nonce, sessionKey);
+
+            send(encryptedNonce + "\r", sendTo);
+            String newNonce = receive(sendTo);
+            if (Integer.parseInt(nonce) - Integer.parseInt(decryptMessage(newNonce, sessionKey)) == 1) {
+                printLine("Key exchange successful");
+                for (int i = 1; i < 4; i ++) {
+                    receiveWithDecryption(sendTo, sessionKey);
+                    sendWithEncryption(String.format("This is message %d to Alice.", i), sessionKey, sendTo);
+                }
             }
-            while (inFromServer.ready());
-
-            printLine("Received: " + newMessage);
-
-
-            String decryptedString = decryptMessage(newMessage.toString());
-            printLine("Decrypted message: " + decryptedString);
-
 
         } catch (IOException e) {
             e.printStackTrace();
         }
-    }
-
-    @Override
-    protected void send(String message) {
-
-    }
-
-    @Override
-    protected void receive() {
-
     }
 }

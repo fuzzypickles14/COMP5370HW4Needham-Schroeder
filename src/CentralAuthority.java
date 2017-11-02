@@ -53,36 +53,25 @@ public class CentralAuthority extends Actor {
         printLine("Started Thread");
         try {
             Socket connected = getSocket().accept();
-            printLine("Connect to " + connected.getLocalPort());
-            BufferedReader receiverMessage = new BufferedReader(new InputStreamReader(connected.getInputStream()));
-            DataOutputStream sender = new DataOutputStream(connected.getOutputStream());
-            String message = receiverMessage.readLine();
+            String message = receive(connected);
 
-            printLine("Received: " + message);
             String[] messages = message.split(MESSAGE_DELIMITER);
-
-            SecretKey key = keys.get(messages[0]);
-            Cipher cipher = Cipher.getInstance("AES");
 
             KeyGenerator keyGenerator = KeyGenerator.getInstance("AES");
             keyGenerator.init(128);
+
             String sessionKey = new BASE64Encoder().encode(keyGenerator.generateKey().getEncoded());
 
+            String messageForBob = buildMessage(messages[0], sessionKey);
 
-            cipher.init(Cipher.ENCRYPT_MODE, keys.get(messages[1]));
-            String encryptedMessageForBob = new BASE64Encoder().encode(cipher.doFinal(buildMessage(messages[0], sessionKey).getBytes()));
+            String encryptedMessageForBob = encryptMessage(messageForBob, keys.get(messages[1]));
 
 
             String response = buildMessageToSend(messages[0],messages[1], messages[2], sessionKey, encryptedMessageForBob);
 
-            printLine("Sending: " + response);
+            String encryptedString = encryptMessage(response, keys.get(messages[0]));
 
-            cipher.init(Cipher.ENCRYPT_MODE, key);
-            byte[] encryptedMessage = cipher.doFinal(response.getBytes());
-            String encryptedString = new BASE64Encoder().encode(encryptedMessage);
-            printLine("Encrypted message: " + encryptedString);
-
-            sender.writeBytes(encryptedString + '\n');
+            send(encryptedString + "{[END]}\r", connected);
 
 
         } catch (Exception e) {
@@ -90,15 +79,6 @@ public class CentralAuthority extends Actor {
         }
     }
 
-    @Override
-    protected void send(String message) {
-
-    }
-
-    @Override
-    protected void receive() {
-
-    }
 
     public void addKey(String name, SecretKey key) {
         this.keys.put(name, key);
