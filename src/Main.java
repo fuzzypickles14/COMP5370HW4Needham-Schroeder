@@ -9,6 +9,10 @@ public class Main {
         int alicePort = 51501;
         int bobPort = 57621;
         int caPort = 51794;
+        String aliceKey = "cdLraSpCJ1ng7eg9PaZmpD3T2nMAao2ZMwxU7Jk+/AU=";
+
+        String bobKey = "WFhNuvmc4GUxQ+z1xUyPjJXEDJ5wgZgSq3LzDETes8I=";
+
         try {
             Alice alice = new Alice("Alice", new ServerSocket(alicePort), "asdf", alicePort);
             Bob bob = new Bob("Bob", new ServerSocket(bobPort), "asdf", bobPort);
