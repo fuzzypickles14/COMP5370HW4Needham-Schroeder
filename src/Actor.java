@@ -1,5 +1,10 @@
+import sun.misc.BASE64Decoder;
+
+import javax.crypto.*;
+import java.io.IOException;
 import java.net.ServerSocket;
-import java.net.Socket;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 
 /**
  * Actor.java
@@ -29,17 +34,16 @@ import java.net.Socket;
  */
 public abstract class Actor implements Runnable {
     protected static final String LOCAL_HOST = "localhost";
-    private String myKey;
+    protected static final String MESSAGE_DELIMITER = "<<---->>";
+    private SecretKey myKey;
     private String name;
     private int port;
     private ServerSocket socket;
 
-    protected abstract void connect();
-    protected abstract void disconnect();
     protected abstract void send(String message);
     protected abstract void receive();
 
-    public Actor(String name, ServerSocket socket, String key, int port) {
+    public Actor(String name, ServerSocket socket, SecretKey key, int port) {
         this.name = name;
         this.socket = socket;
         this.myKey = key;
@@ -56,6 +60,27 @@ public abstract class Actor implements Runnable {
         System.out.println(String.format("%s %s", getName(), message));
     }
 
+    protected String buildMessage(String... messages) {
+        return String.join(MESSAGE_DELIMITER, messages);
+    }
+
+    protected String buildMessageToSend(String... messages) {
+        return String.join(MESSAGE_DELIMITER, messages) + "\n";
+    }
+
+    protected String decryptMessage(String message) {
+        try {
+            Cipher cipher = Cipher.getInstance("AES");
+            cipher.init(Cipher.DECRYPT_MODE, getMyKey());
+            byte[] decryptedMessage = cipher.doFinal(new BASE64Decoder().decodeBuffer(message));
+            String decryptedString = new String(decryptedMessage);
+            return decryptedString;
+        } catch (NoSuchAlgorithmException | IllegalBlockSizeException | BadPaddingException | InvalidKeyException | NoSuchPaddingException | IOException e) {
+            e.printStackTrace();
+        }
+        return "";
+    }
+
 
 
     //region Getters and Setters
@@ -64,11 +89,11 @@ public abstract class Actor implements Runnable {
         return this.name + ':';
     }
 
-    protected String getMyKey() {
+    protected SecretKey getMyKey() {
         return this.myKey;
     }
 
-    protected void setMyKey(String myKey) {
+    protected void setMyKey(SecretKey myKey) {
         this.myKey = myKey;
     }
 

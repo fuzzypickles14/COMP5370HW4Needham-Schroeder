@@ -1,6 +1,13 @@
+import sun.misc.BASE64Decoder;
+
+import javax.crypto.*;
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.util.Objects;
+import java.util.Random;
 
 /**
  * Alice.java
@@ -29,34 +36,58 @@ import java.net.Socket;
  * SOFTWARE.
  */
 public class Alice extends Actor {
-    public Alice(String name, ServerSocket socket, String key, int port) {
+    public Alice(String name, ServerSocket socket, SecretKey key, int port) {
         super(name, socket, key, port);
     }
 
     @Override
     public void run() {
         printLine("Started Thread");
+        Socket sendTo;
         try {
-            Socket connected = getSocket().accept();
-            BufferedReader receiverMessage = new BufferedReader(new InputStreamReader(connected.getInputStream()));
-            DataOutputStream sender = new DataOutputStream(connected.getOutputStream());
-            String message = receiverMessage.readLine();
-            printLine(String.format("Received: %s", message));
-            sender.writeBytes(String.format("%s %s", message, "has been edited\n"));
+            sendTo = new Socket("localhost", Main.CA_PORT);
+            DataOutputStream sendToServer = new DataOutputStream(sendTo.getOutputStream());
+            BufferedReader inFromServer = new BufferedReader(new InputStreamReader(sendTo.getInputStream()));
+            Random random = new Random();
 
-        } catch (IOException e) {
+            String message = buildMessageToSend("Alice", "Bob", String.valueOf(random.nextInt()));
+            printLine("Sending " + message);
+            sendToServer.writeBytes(message);
+            StringBuilder newMessage = new StringBuilder();
+
+            do {
+                newMessage.append(inFromServer.readLine() + "\n");
+            }
+            while (inFromServer.ready());
+
+            printLine("Received: " + newMessage);
+
+            Cipher cipher = Cipher.getInstance("AES");
+            cipher.init(Cipher.DECRYPT_MODE, getMyKey());
+            byte[] decryptedMessage = cipher.doFinal(new BASE64Decoder().decodeBuffer(newMessage.toString()));
+            String decryptedString = new String(decryptedMessage);
+            printLine("Decrypted message: " + decryptedString);
+
+            sendTo.close();
+            String[] decryptedFields = decryptedString.split(Actor.MESSAGE_DELIMITER);
+
+
+
+
+            sendTo = new Socket("localhost", Main.BOB_PORT);
+
+            sendToServer = new DataOutputStream(sendTo.getOutputStream());
+            inFromServer = new BufferedReader(new InputStreamReader(sendTo.getInputStream()));
+
+            printLine("Sending " + decryptedFields[4]);
+            sendToServer.writeBytes(decryptedFields[4] + '\n');
+
+
+
+
+        } catch (IOException | NoSuchAlgorithmException | NoSuchPaddingException | BadPaddingException | IllegalBlockSizeException | InvalidKeyException e) {
             e.printStackTrace();
         }
-    }
-
-    @Override
-    protected void connect() {
-
-    }
-
-    @Override
-    protected void disconnect() {
-
     }
 
     @Override
@@ -68,4 +99,6 @@ public class Alice extends Actor {
     protected void receive() {
 
     }
+
+
 }

@@ -1,9 +1,16 @@
+import sun.misc.BASE64Decoder;
+
+import javax.crypto.*;
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.UnknownHostException;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.util.Random;
 
 /**
  * Bob.java
@@ -33,36 +40,36 @@ import java.net.Socket;
  */
 public class Bob extends Actor {
 
-    public Bob(String name, ServerSocket socket, String key, int port) {
+    public Bob(String name, ServerSocket socket, SecretKey key, int port) {
         super(name, socket, key, port);
     }
 
     @Override
     public void run() {
         printLine("Started Thread");
-        Socket sendTo = null;
+        Socket sendTo;
         try {
-            sendTo = new Socket("localhost", 51501);
+            sendTo = getSocket().accept();
             DataOutputStream sendToServer = new DataOutputStream(sendTo.getOutputStream());
             BufferedReader inFromServer = new BufferedReader(new InputStreamReader(sendTo.getInputStream()));
-            String message = "This is a test\n";
-            sendToServer.writeBytes(message);
-            String newMessage = inFromServer.readLine();
+            Random random = new Random();
+
+            StringBuilder newMessage = new StringBuilder();
+            do {
+                newMessage.append(inFromServer.readLine() + "\n");
+            }
+            while (inFromServer.ready());
+
             printLine("Received: " + newMessage);
+
+
+            String decryptedString = decryptMessage(newMessage.toString());
+            printLine("Decrypted message: " + decryptedString);
+
 
         } catch (IOException e) {
             e.printStackTrace();
         }
-    }
-
-    @Override
-    protected void connect() {
-
-    }
-
-    @Override
-    protected void disconnect() {
-
     }
 
     @Override

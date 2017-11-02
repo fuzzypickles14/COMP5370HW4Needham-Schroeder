@@ -1,5 +1,19 @@
+import sun.misc.BASE64Decoder;
+import sun.misc.BASE64Encoder;
+
+import javax.crypto.Cipher;
+import javax.crypto.KeyGenerator;
+import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
+import java.io.BufferedReader;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.security.NoSuchAlgorithmException;
+import java.util.HashMap;
 
 /**
  * CentralAuthority.java
@@ -28,23 +42,52 @@ import java.net.Socket;
  * SOFTWARE.
  */
 public class CentralAuthority extends Actor {
-    public CentralAuthority(String name, ServerSocket socket, String key, int port) {
-        super(name, socket, key, port);
+
+    private HashMap<String, SecretKey> keys = new HashMap<>();
+    public CentralAuthority(String name, ServerSocket socket, int port) {
+        super(name, socket, null, port);
     }
 
     @Override
     public void run() {
         printLine("Started Thread");
-    }
+        try {
+            Socket connected = getSocket().accept();
+            printLine("Connect to " + connected.getLocalPort());
+            BufferedReader receiverMessage = new BufferedReader(new InputStreamReader(connected.getInputStream()));
+            DataOutputStream sender = new DataOutputStream(connected.getOutputStream());
+            String message = receiverMessage.readLine();
 
-    @Override
-    protected void connect() {
+            printLine("Received: " + message);
+            String[] messages = message.split(MESSAGE_DELIMITER);
 
-    }
+            SecretKey key = keys.get(messages[0]);
+            Cipher cipher = Cipher.getInstance("AES");
 
-    @Override
-    protected void disconnect() {
+            KeyGenerator keyGenerator = KeyGenerator.getInstance("AES");
+            keyGenerator.init(128);
+            String sessionKey = new BASE64Encoder().encode(keyGenerator.generateKey().getEncoded());
 
+
+            cipher.init(Cipher.ENCRYPT_MODE, keys.get(messages[1]));
+            String encryptedMessageForBob = new BASE64Encoder().encode(cipher.doFinal(buildMessage(messages[0], sessionKey).getBytes()));
+
+
+            String response = buildMessageToSend(messages[0],messages[1], messages[2], sessionKey, encryptedMessageForBob);
+
+            printLine("Sending: " + response);
+
+            cipher.init(Cipher.ENCRYPT_MODE, key);
+            byte[] encryptedMessage = cipher.doFinal(response.getBytes());
+            String encryptedString = new BASE64Encoder().encode(encryptedMessage);
+            printLine("Encrypted message: " + encryptedString);
+
+            sender.writeBytes(encryptedString + '\n');
+
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -55,5 +98,9 @@ public class CentralAuthority extends Actor {
     @Override
     protected void receive() {
 
+    }
+
+    public void addKey(String name, SecretKey key) {
+        this.keys.put(name, key);
     }
 }
